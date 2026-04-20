@@ -163,6 +163,20 @@ const handleDelete = async (id, username) => {
                           <option value="approved">Approved</option>
                           <option value="rejected">Suspended</option>
                         </select>
+                         <button
+    onClick={() => handleDelete(s.id, s.username)}
+    style={{
+      padding: '4px 10px',
+      background: '#dc3545',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontSize: '12px'
+    }}
+  >
+    Delete
+  </button>
                       </td>
                     </tr>
                   ))
