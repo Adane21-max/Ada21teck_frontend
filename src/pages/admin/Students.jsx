@@ -30,16 +30,18 @@ const Students = () => {
       alert('Failed to update status');
     }
   };
-const handleDelete = async (id, username) => {
-  if (window.confirm(`Permanently delete ${username} and all their data? This cannot be undone.`)) {
-    try {
-      await api.delete(`/students/${id}`);
-      fetchAllStudents(); // refresh the list
-    } catch (err) {
-      alert('Failed to delete student');
+
+  const handleDelete = async (id, username) => {
+    if (window.confirm(`Permanently delete ${username} and all their data? This cannot be undone.`)) {
+      try {
+        await api.delete(`/students/${id}`);
+        fetchStudents(); // ✅ CORRECTED: use the actual function name
+      } catch (err) {
+        alert('Failed to delete student');
+      }
     }
-  }
-};
+  };
+
   const getStatusBadge = (status) => {
     const colors = {
       pending: '#ffc107',
@@ -153,7 +155,7 @@ const handleDelete = async (id, username) => {
                       <td>{getStatusBadge(s.status)}</td>
                       <td style={{ textAlign: 'center' }}>{s.quiz_types_taken || 0}</td>
                       <td>{new Date(s.created_at).toLocaleDateString()}</td>
-                      <td>
+                      <td style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <select
                           value={s.status}
                           onChange={(e) => handleStatusChange(s.id, e.target.value)}
@@ -163,20 +165,20 @@ const handleDelete = async (id, username) => {
                           <option value="approved">Approved</option>
                           <option value="rejected">Suspended</option>
                         </select>
-                         <button
-    onClick={() => handleDelete(s.id, s.username)}
-    style={{
-      padding: '4px 10px',
-      background: '#dc3545',
-      color: '#fff',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '12px'
-    }}
-  >
-    Delete
-  </button>
+                        <button
+                          onClick={() => handleDelete(s.id, s.username)}
+                          style={{
+                            padding: '4px 10px',
+                            background: '#dc3545',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))
