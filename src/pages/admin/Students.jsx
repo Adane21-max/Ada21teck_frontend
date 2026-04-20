@@ -30,7 +30,16 @@ const Students = () => {
       alert('Failed to update status');
     }
   };
-
+const handleDelete = async (id, username) => {
+  if (window.confirm(`Permanently delete ${username} and all their data? This cannot be undone.`)) {
+    try {
+      await api.delete(`/students/${id}`);
+      fetchAllStudents(); // refresh the list
+    } catch (err) {
+      alert('Failed to delete student');
+    }
+  }
+};
   const getStatusBadge = (status) => {
     const colors = {
       pending: '#ffc107',
