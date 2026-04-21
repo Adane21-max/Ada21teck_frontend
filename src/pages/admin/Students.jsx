@@ -31,12 +31,11 @@ const Students = () => {
     }
   };
 
-  // ✅ DELETE HANDLER
   const handleDelete = async (id, username) => {
     if (window.confirm(`Permanently delete ${username} and all their data? This cannot be undone.`)) {
       try {
         await api.delete(`/students/${id}`);
-        fetchStudents(); // refresh the list
+        fetchStudents();
       } catch (err) {
         alert('Failed to delete student');
       }
@@ -68,6 +67,7 @@ const Students = () => {
     );
   };
 
+  // Count students per grade for the summary cards
   const gradeCounts = {};
   for (let g = 6; g <= 12; g++) gradeCounts[g] = 0;
   students.forEach(s => { if (gradeCounts[s.grade] !== undefined) gradeCounts[s.grade]++; });
@@ -139,14 +139,16 @@ const Students = () => {
                   <th>ID</th>
                   <th>Username</th>
                   <th>Status</th>
-                  <th>Quiz Types Taken</th>
+                  <th>Quiz Types</th>
+                  <th>Avg Score</th>
+                  <th>Total Score</th>
                   <th>Registered</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStudents.length === 0 ? (
-                  <tr><td colSpan="6" style={{ textAlign: 'center' }}>No students in this grade.</td></tr>
+                  <tr><td colSpan="8" style={{ textAlign: 'center' }}>No students in this grade.</td></tr>
                 ) : (
                   filteredStudents.map(s => (
                     <tr key={s.id}>
@@ -154,6 +156,8 @@ const Students = () => {
                       <td>{s.username}</td>
                       <td>{getStatusBadge(s.status)}</td>
                       <td style={{ textAlign: 'center' }}>{s.quiz_types_taken || 0}</td>
+                      <td style={{ textAlign: 'center' }}>{s.average_score ?? '0.00'}</td>
+                      <td style={{ textAlign: 'center' }}>{s.total_score ?? 0}</td>
                       <td>{new Date(s.created_at).toLocaleDateString()}</td>
                       <td style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <select
@@ -165,7 +169,6 @@ const Students = () => {
                           <option value="approved">Approved</option>
                           <option value="rejected">Suspended</option>
                         </select>
-                        {/* ✅ DELETE BUTTON */}
                         <button
                           onClick={() => handleDelete(s.id, s.username)}
                           style={{
