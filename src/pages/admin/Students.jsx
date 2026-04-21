@@ -67,7 +67,7 @@ const Students = () => {
     );
   };
 
-  // Count students per grade for the summary cards
+  // Count students per grade for summary cards
   const gradeCounts = {};
   for (let g = 6; g <= 12; g++) gradeCounts[g] = 0;
   students.forEach(s => { if (gradeCounts[s.grade] !== undefined) gradeCounts[s.grade]++; });
@@ -140,8 +140,8 @@ const Students = () => {
                   <th>Username</th>
                   <th>Status</th>
                   <th>Quiz Types</th>
-                  <th>Avg Score</th>
-                  <th>Total Score</th>
+                  <th>T (Sum)</th>
+                  <th>Avg</th>
                   <th>Registered</th>
                   <th>Actions</th>
                 </tr>
@@ -156,8 +156,8 @@ const Students = () => {
                       <td>{s.username}</td>
                       <td>{getStatusBadge(s.status)}</td>
                       <td style={{ textAlign: 'center' }}>{s.quiz_types_taken || 0}</td>
-                      <td style={{ textAlign: 'center' }}>{s.average_score ?? '0.00'}</td>
-                      <td style={{ textAlign: 'center' }}>{s.total_score ?? 0}</td>
+                      <td style={{ textAlign: 'center' }}>{s.total_subject_avg_sum ?? '0.00'}</td>
+                      <td style={{ textAlign: 'center' }}>{s.overall_avg ? s.overall_avg + '%' : '-'}</td>
                       <td>{new Date(s.created_at).toLocaleDateString()}</td>
                       <td style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <select
