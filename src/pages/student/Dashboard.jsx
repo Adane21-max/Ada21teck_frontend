@@ -53,19 +53,25 @@ const StudentDashboard = () => {
     }
   };
 
-  const handleReceiptUpload = async (e) => {
-    e.preventDefault();
-    if (!receipt) return;
-    const formData = new FormData();
-    formData.append('receipt', receipt);
-    try {
-      await api.post('/payments/upload', formData);
-      setUploadMsg('Receipt uploaded! Awaiting approval.');
-      setReceipt(null);
-    } catch (err) {
-      setUploadMsg('Upload failed. Try again.');
-    }
-  };
+  const handlePaymentSubmit = async (e) => {
+  e.preventDefault();
+  if (!payerName.trim() || !transactionRef.trim()) {
+    setUploadMsg('Please fill in both fields.');
+    return;
+  }
+  try {
+    await api.post('/payments/submit', {
+      payer_name: payerName.trim(),
+      transaction_ref: transactionRef.trim()
+    });
+    setUploadMsg('Payment info submitted! Awaiting admin approval.');
+    setPayerName('');
+    setTransactionRef('');
+    setTimeout(() => setShowPayment(false), 2000);
+  } catch (err) {
+    setUploadMsg(err.response?.data?.message || 'Submission failed. Try again.');
+  }
+};
 
   const handleReview = async (attemptId) => {
     try {
