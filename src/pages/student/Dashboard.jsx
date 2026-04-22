@@ -558,7 +558,7 @@ const StudentDashboard = () => {
               Telebirr: 0936592186 (Adane F)
             </p>
             <p style={{ margin: '16px 0 8px', fontSize: '14px', color: '#6b7280' }}>
-              After payment, enter your name and Telebirr transaction reference below.
+              After payment, enter your full name as on Telebirr and Telebirr transaction reference below.
             </p>
             <form onSubmit={handlePaymentSubmit}>
               <input
