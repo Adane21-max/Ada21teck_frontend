@@ -10,40 +10,38 @@ const StudentDashboard = () => {
   const [quizTypes, setQuizTypes] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [showPayment, setShowPayment] = useState(false);
-  const [receipt, setReceipt] = useState(null);
+  const [payerName, setPayerName] = useState('');               // ✅ changed
+  const [transactionRef, setTransactionRef] = useState('');     // ✅ new
   const [uploadMsg, setUploadMsg] = useState('');
   const [loading, setLoading] = useState(true);
   const [attempts, setAttempts] = useState([]);
   const [reviewAttempt, setReviewAttempt] = useState(null);
   const [reviewQuestions, setReviewQuestions] = useState([]);
-  
-  // ✅ NEW: Leaderboard state
   const [leaderboard, setLeaderboard] = useState([]);
 
- useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const [annRes, subjectsRes, typesRes, attemptsRes, leaderRes] = await Promise.all([
-        api.get('/announcements'),
-        api.get('/subjects'),
-        api.get(`/question-types/visible?grade=${user?.grade}`),
-        api.get('/attempts'),
-        api.get(`/students/leaderboard?grade=${user?.grade}`)   // ✅ Filter by grade
-      ]);
-      setAnnouncements(annRes.data);
-      setSubjects(subjectsRes.data);
-      setQuizTypes(typesRes.data);
-      setAttempts(attemptsRes.data);
-      setLeaderboard(leaderRes.data);
-      console.log('Attempts received:', attemptsRes.data);
-    } catch (err) {
-      console.error('Failed to fetch dashboard data', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  if (user?.grade) fetchData();
-}, [user, refreshKey]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [annRes, subjectsRes, typesRes, attemptsRes, leaderRes] = await Promise.all([
+          api.get('/announcements'),
+          api.get('/subjects'),
+          api.get(`/question-types/visible?grade=${user?.grade}`),
+          api.get('/attempts'),
+          api.get(`/students/leaderboard?grade=${user?.grade}`)
+        ]);
+        setAnnouncements(annRes.data);
+        setSubjects(subjectsRes.data);
+        setQuizTypes(typesRes.data);
+        setAttempts(attemptsRes.data);
+        setLeaderboard(leaderRes.data);
+      } catch (err) {
+        console.error('Failed to fetch dashboard data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user?.grade) fetchData();
+  }, [user, refreshKey]);
 
   const handleTakeQuizClick = () => {
     if (user?.status !== 'approved') {
@@ -53,25 +51,26 @@ const StudentDashboard = () => {
     }
   };
 
+  // ✅ NEW payment submit handler
   const handlePaymentSubmit = async (e) => {
-  e.preventDefault();
-  if (!payerName.trim() || !transactionRef.trim()) {
-    setUploadMsg('Please fill in both fields.');
-    return;
-  }
-  try {
-    await api.post('/payments/submit', {
-      payer_name: payerName.trim(),
-      transaction_ref: transactionRef.trim()
-    });
-    setUploadMsg('Payment info submitted! Awaiting admin approval.');
-    setPayerName('');
-    setTransactionRef('');
-    setTimeout(() => setShowPayment(false), 2000);
-  } catch (err) {
-    setUploadMsg(err.response?.data?.message || 'Submission failed. Try again.');
-  }
-};
+    e.preventDefault();
+    if (!payerName.trim() || !transactionRef.trim()) {
+      setUploadMsg('Please fill in both fields.');
+      return;
+    }
+    try {
+      await api.post('/payments/submit', {
+        payer_name: payerName.trim(),
+        transaction_ref: transactionRef.trim()
+      });
+      setUploadMsg('Payment info submitted! Awaiting admin approval.');
+      setPayerName('');
+      setTransactionRef('');
+      setTimeout(() => setShowPayment(false), 2000);
+    } catch (err) {
+      setUploadMsg(err.response?.data?.message || 'Submission failed. Try again.');
+    }
+  };
 
   const handleReview = async (attemptId) => {
     try {
@@ -439,7 +438,7 @@ const StudentDashboard = () => {
             </div>
           )}
 
-          {/* ✅ LEADERBOARD CARD - NEW */}
+          {/* Leaderboard */}
           <div style={{
             background: '#ffffff',
             borderRadius: '20px',
@@ -450,7 +449,7 @@ const StudentDashboard = () => {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <span style={{ fontSize: '24px' }}>🏆</span>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3c72', fontWeight: '600' }}>Top Performers— Grade {user?.grade} </h3>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3c72', fontWeight: '600' }}>Top Performers — Grade {user?.grade}</h3>
             </div>
             {leaderboard.length === 0 ? (
               <p style={{ color: '#6b7280', fontSize: '14px' }}>No data yet.</p>
@@ -480,6 +479,7 @@ const StudentDashboard = () => {
             )}
           </div>
 
+          {/* Announcements */}
           <div style={{
             background: '#fff',
             borderRadius: '20px',
@@ -542,85 +542,53 @@ const StudentDashboard = () => {
         </div>
       </div>
 
-      {/* Payment Modal */}
+      {/* Payment Modal - UPDATED */}
       {showPayment && (
         <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center',
           zIndex: 1000
         }}>
-          <div style={{
-            background: '#fff',
-            padding: '30px',
-            borderRadius: '24px',
-            maxWidth: '480px',
-            width: '90%'
-          }}>
+          <div style={{ background: '#fff', padding: '30px', borderRadius: '24px', maxWidth: '480px', width: '90%' }}>
             <h3 style={{ margin: '0 0 16px', color: '#1e3c72' }}>⏳ Pending Approval</h3>
             <p style={{ margin: '0 0 16px', color: '#4b5563' }}>
               Your account is not yet approved. To access full quizzes, please pay 1000 Birr via Telebirr:
             </p>
-            <p style={{
-              background: '#f3f4f6',
-              padding: '12px',
-              borderRadius: '12px',
-              fontWeight: '600',
-              textAlign: 'center'
-            }}>
+            <p style={{ background: '#f3f4f6', padding: '12px', borderRadius: '12px', fontWeight: '600', textAlign: 'center' }}>
               Telebirr: 0936592186 (Adane F)
             </p>
             <p style={{ margin: '16px 0 8px', fontSize: '14px', color: '#6b7280' }}>
-              Upload your receipt for faster approval.
+              After payment, enter your name and Telebirr transaction reference below.
             </p>
-            <form onSubmit={handleReceiptUpload}>
+            <form onSubmit={handlePaymentSubmit}>
               <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setReceipt(e.target.files[0])}
+                type="text"
+                placeholder="Your Full Name (as on Telebirr)"
+                value={payerName}
+                onChange={(e) => setPayerName(e.target.value)}
                 required
-                style={{ marginBottom: '16px', width: '100%' }}
+                style={{ marginBottom: '12px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
+              />
+              <input
+                type="text"
+                placeholder="Transaction Reference / ID"
+                value={transactionRef}
+                onChange={(e) => setTransactionRef(e.target.value)}
+                required
+                style={{ marginBottom: '16px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
               />
               <button type="submit" style={{
-                width: '100%',
-                padding: '12px',
-                background: '#2a5298',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '12px',
-                fontWeight: '600',
-                cursor: 'pointer'
+                width: '100%', padding: '12px', background: '#2a5298', color: '#fff',
+                border: 'none', borderRadius: '12px', fontWeight: '600', cursor: 'pointer'
               }}>
-                Upload Receipt
+                Submit Payment Info
               </button>
             </form>
-            {uploadMsg && (
-              <p style={{
-                marginTop: '12px',
-                color: uploadMsg.includes('failed') ? '#dc2626' : '#059669'
-              }}>
-                {uploadMsg}
-              </p>
-            )}
-            <button
-              onClick={() => setShowPayment(false)}
-              style={{
-                marginTop: '16px',
-                background: 'transparent',
-                border: '1px solid #d1d5db',
-                padding: '10px',
-                width: '100%',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                color: '#6b7280'
-              }}
-            >
+            {uploadMsg && <p style={{ marginTop: '12px', color: uploadMsg.includes('failed') ? '#dc2626' : '#059669' }}>{uploadMsg}</p>}
+            <button onClick={() => setShowPayment(false)} style={{
+              marginTop: '16px', background: 'transparent', border: '1px solid #d1d5db',
+              padding: '10px', width: '100%', borderRadius: '12px', cursor: 'pointer', color: '#6b7280'
+            }}>
               Close
             </button>
           </div>
@@ -630,25 +598,13 @@ const StudentDashboard = () => {
       {/* Review Modal */}
       {reviewAttempt && (
         <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center',
           zIndex: 1000
         }}>
           <div style={{
-            background: '#fff',
-            borderRadius: '20px',
-            padding: '30px',
-            maxWidth: '800px',
-            width: '90%',
-            maxHeight: '80vh',
-            overflow: 'auto'
+            background: '#fff', borderRadius: '20px', padding: '30px', maxWidth: '800px',
+            width: '90%', maxHeight: '80vh', overflow: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ color: '#1e3c72' }}>Review: {reviewAttempt.quiz_name}</h2>
