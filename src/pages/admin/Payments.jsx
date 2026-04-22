@@ -3,8 +3,7 @@ import api from '../../api/axios';
 
 const Payments = () => {
   const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [rejectReason, setRejectReason] = useState({});
+  const [loading, setLoading] = useState(true);
 
   const fetchPayments = async () => {
     setLoading(true);
@@ -23,15 +22,9 @@ const Payments = () => {
   }, []);
 
   const handleStatusChange = async (id, status) => {
-    const reason = status === 'rejected' ? rejectReason[id] : null;
     try {
-      await api.put(`/payments/${id}`, { status, reason });
-      setRejectReason(prev => {
-        const copy = { ...prev };
-        delete copy[id];
-        return copy;
-      });
-      fetchPayments();
+      await api.put(`/payments/${id}`, { status });
+      fetchPayments(); // refresh
     } catch (err) {
       alert('Failed to update payment');
     }
@@ -57,75 +50,63 @@ const Payments = () => {
     );
   };
 
+  if (loading) {
+    return <div style={{ padding: '20px' }}>Loading payments...</div>;
+  }
+
   return (
     <div>
-      <h2>Payment Approvals</h2>
-      {loading ? (
-        <p>Loading...</p>
+      <h2>Payments Management</h2>
+
+      {payments.length === 0 ? (
+        <p>No payment records yet.</p>
       ) : (
         <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
               <th>ID</th>
               <th>Student</th>
-              <th>Amount</th>
-              <th>Receipt</th>
+              <th>Grade</th>
+              <th>Payer Name</th>
+              <th>Transaction Ref</th>
               <th>Status</th>
               <th>Date</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {payments.length === 0 ? (
-              <tr><td colSpan="7" style={{ textAlign: 'center' }}>No payments yet.</td></tr>
-            ) : (
-              payments.map(p => (
-                <tr key={p.id}>
-                  <td>{p.id}</td>
-                  <td>{p.username}</td>
-                  <td>{p.amount} Birr</td>
-                  <td>
-                    <a
-                      href={`http://127.0.0.1:5000/uploads/${p.receipt_image}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ color: '#2a5298', textDecoration: 'underline' }}
-                    >
-                      View Receipt
-                    </a>
-                  </td>
-                  <td>{getStatusBadge(p.status)}</td>
-                  <td>{new Date(p.created_at).toLocaleString()}</td>
-                  <td>
-                    {p.status === 'pending' ? (
-                      <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                        <button
-                          onClick={() => handleStatusChange(p.id, 'approved')}
-                          style={{ padding: '4px 8px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(p.id, 'rejected')}
-                          style={{ padding: '4px 8px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                        >
-                          Reject
-                        </button>
-                        <input
-                          type="text"
-                          placeholder="Reason (optional)"
-                          value={rejectReason[p.id] || ''}
-                          onChange={(e) => setRejectReason({ ...rejectReason, [p.id]: e.target.value })}
-                          style={{ width: '120px', padding: '4px' }}
-                        />
-                      </div>
-                    ) : (
-                      <span style={{ color: '#6b7280' }}>—</span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
+            {payments.map(p => (
+              <tr key={p.id}>
+                <td>{p.id}</td>
+                <td>{p.username}</td>
+                <td>{p.grade}</td>
+                <td>{p.payer_name}</td>
+                <td>{p.transaction_ref}</td>
+                <td>{getStatusBadge(p.status)}</td>
+                <td>{new Date(p.created_at).toLocaleString()}</td>
+                <td>
+                  {p.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleStatusChange(p.id, 'approved')}
+                        style={{ marginRight: '5px', background: '#28a745', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(p.id, 'rejected')}
+                        style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                  {p.status !== 'pending' && (
+                    <span style={{ color: '#6b7280' }}>Processed</span>
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}
