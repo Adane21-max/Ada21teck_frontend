@@ -157,7 +157,7 @@ const Register = () => {
                 boxSizing: 'border-box',
               }}
             >
-              {[6,8,12].map(g => (
+              {[6,7,8,9,10,11,12].map(g => (
                 <option key={g} value={g}>Grade {g}</option>
               ))}
             </select>
