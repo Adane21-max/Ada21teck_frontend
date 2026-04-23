@@ -21,82 +21,79 @@ const TakeQuiz = () => {
   const [startTime, setStartTime] = useState(null);
 
   useEffect(() => {
-  const fetchData = async () => {
-    setError(null);
-    setLoading(true); // Ensure loading is true at start
-    try {
-      // ✅ PRE-CHECK: If student already attempted this quiz, redirect immediately
-      const attemptsRes = await api.get('/attempts');
-      const attempts = attemptsRes.data;
-      
-      console.log('Attempts received:', attempts);
-      console.log('Current typeId:', typeId, 'Type:', typeof typeId);
-      
-      if (attempts.length > 0) {
-        console.log('First attempt keys:', Object.keys(attempts[0]));
-        console.log('First attempt:', attempts[0]);
-      }
-      
-      // Try multiple possible field names for type_id
-      const alreadyAttempted = attempts.some(a => {
-        const attemptTypeId = a.type_id || a.typeId || a.quiz_type_id || a.question_type_id;
-        console.log('Comparing:', attemptTypeId, 'with', typeId);
-        return String(attemptTypeId) === String(typeId);
-      });
-      
-      console.log('Already attempted?', alreadyAttempted);
-      
-      if (alreadyAttempted) {
-        console.log('Redirecting to dashboard...');
-        navigate('/dashboard', { replace: true });
-        return; // Stop execution - no need to setLoading(false) since we're navigating away
-      }
+    const fetchData = async () => {
+      setError(null);
+      setLoading(true);
+      try {
+        // 1. Check if student already attempted this quiz
+        const attemptsRes = await api.get('/attempts');
+        const attempts = attemptsRes.data;
 
-      console.log(`Fetching quiz data for typeId: ${typeId}`);
-      const [typeRes, questionsRes] = await Promise.all([
-        api.get(`/question-types/${typeId}`),
-        api.get(`/questions?type_id=${typeId}`)
-      ]);
-      console.log('Type info:', typeRes.data);
-      console.log('Questions:', questionsRes.data);
-      
-      if (!questionsRes.data || questionsRes.data.length === 0) {
-        setError('This quiz has no questions yet.');
-        return;
-      }
-      
-      setTypeInfo(typeRes.data);
-      setQuestions(questionsRes.data);
-      if (typeRes.data.total_time) {
-        setTimeLeft(typeRes.data.total_time);
-      }
-      setStartTime(Date.now());
-    } catch (err) {
-      console.error('Failed to load quiz:', err);
-      setError(err.response?.data?.message || 'Failed to load quiz');
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchData();
-}, [typeId, navigate]);
+        const existingAttempt = attempts.find(a =>
+          String(a.type_id) === String(typeId)
+        );
 
+        if (existingAttempt) {
+          // ▶ Already attempted – fetch review data and show it immediately
+          const reviewRes = await api.get(`/attempts/${existingAttempt.id}`);
+          const { attempt, questions: reviewQuestions } = reviewRes.data;
+
+          // Build answers map from stored answers
+          const storedAnswers = {};
+          reviewQuestions.forEach(q => {
+            if (q.student_answer) storedAnswers[q.id] = q.student_answer;
+          });
+
+          setTypeInfo({ name: attempt.quiz_name });
+          setQuestions(reviewQuestions);
+          setAnswers(storedAnswers);
+          setScore(attempt.score);
+          setSubmitted(true);   // activates review screen
+          setLoading(false);
+          return;
+        }
+
+        // 2. First attempt – load quiz normally
+        const [typeRes, questionsRes] = await Promise.all([
+          api.get(`/question-types/${typeId}`),
+          api.get(`/questions?type_id=${typeId}`)
+        ]);
+
+        if (!questionsRes.data || questionsRes.data.length === 0) {
+          setError('This quiz has no questions yet.');
+          setLoading(false);
+          return;
+        }
+
+        setTypeInfo(typeRes.data);
+        setQuestions(questionsRes.data);
+        if (typeRes.data.total_time) {
+          setTimeLeft(typeRes.data.total_time);
+        }
+        setStartTime(Date.now());
+      } catch (err) {
+        console.error('Failed to load quiz:', err);
+        setError(err.response?.data?.message || 'Failed to load quiz');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [typeId, navigate]);
+
+  // Timer countdown
   useEffect(() => {
     if (timeLeft === null || submitted || loading) return;
     if (timeLeft <= 0) {
       handleAutoSubmit();
       return;
     }
-    timerRef.current = setTimeout(() => {
-      setTimeLeft(timeLeft - 1);
-    }, 1000);
+    timerRef.current = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
     return () => clearTimeout(timerRef.current);
   }, [timeLeft, submitted, loading]);
 
   const handleAutoSubmit = () => {
-    if (!submitted) {
-      handleSubmit();
-    }
+    if (!submitted) handleSubmit();
   };
 
   const handleAnswer = (questionId, answer) => {
@@ -112,8 +109,9 @@ const TakeQuiz = () => {
       if (answers[q.id] === q.correct_answer) correct++;
     });
     setScore(correct);
-    setSubmitted(true);
+    setSubmitted(true);   // show review screen immediately
 
+    // Save attempt in background – do NOT navigate away
     try {
       await api.post('/attempts', {
         type_id: typeId,
@@ -122,12 +120,9 @@ const TakeQuiz = () => {
         time_taken: timeTaken,
         answers: answers
       });
-      
-      triggerRefresh();
-      navigate('/dashboard');
+      if (triggerRefresh) triggerRefresh();
     } catch (err) {
       console.error('Failed to save attempt', err);
-      navigate('/dashboard');
     }
   };
 
@@ -138,10 +133,12 @@ const TakeQuiz = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // ========== LOADING ==========
   if (loading) {
     return <div style={{ padding: '40px', textAlign: 'center' }}>Loading quiz...</div>;
   }
 
+  // ========== ERROR ==========
   if (error) {
     return (
       <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -152,6 +149,7 @@ const TakeQuiz = () => {
     );
   }
 
+  // ========== NO QUESTIONS ==========
   if (questions.length === 0) {
     return (
       <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -161,6 +159,7 @@ const TakeQuiz = () => {
     );
   }
 
+  // ========== REVIEW MODE (after submission or for re‑attempt) ==========
   if (submitted) {
     return (
       <div style={{ maxWidth: '900px', margin: '30px auto', padding: '20px', fontFamily: 'Segoe UI, sans-serif' }}>
@@ -171,7 +170,7 @@ const TakeQuiz = () => {
           </div>
           <p style={{ fontSize: '18px', color: '#4b5563' }}>
             {score === questions.length ? '🎉 Perfect score! Excellent work!' :
-             score >= questions.length/2 ? '👍 Good job! Keep practicing.' :
+             score >= questions.length / 2 ? '👍 Good job! Keep practicing.' :
              '💪 Keep practicing! You can do better next time.'}
           </p>
           <button
@@ -191,7 +190,7 @@ const TakeQuiz = () => {
           </button>
         </div>
 
-                <h2 style={{ color: '#1e3c72', marginBottom: '20px' }}>Review Your Answers</h2>
+        <h2 style={{ color: '#1e3c72', marginBottom: '20px' }}>Review Your Answers</h2>
         {questions.map((q, idx) => {
           const studentAnswer = answers[q.id];
           const isCorrect = studentAnswer === q.correct_answer;
@@ -215,9 +214,9 @@ const TakeQuiz = () => {
                   const isStudentChoice = studentAnswer === opt;
 
                   let background = '#f9fafb';
-                  if (isStudentChoice && isCorrect) background = '#d1fae5';      // green – correct
-                  else if (isStudentChoice && !isCorrect) background = '#fee2e2'; // red – wrong
-                  else if (isCorrectOption) background = '#d1fae5';               // show correct answer
+                  if (isStudentChoice && isCorrect) background = '#d1fae5';
+                  else if (isStudentChoice && !isCorrect) background = '#fee2e2';
+                  else if (isCorrectOption) background = '#d1fae5';
 
                   return (
                     <div
@@ -249,6 +248,7 @@ const TakeQuiz = () => {
     );
   }
 
+  // ========== QUIZ IN PROGRESS ==========
   const currentQ = questions[currentIndex];
 
   return (
@@ -296,7 +296,6 @@ const TakeQuiz = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {['A', 'B', 'C', 'D'].map(opt => (
             <label key={opt} style={{
-              display: '245',
               padding: '15px',
               background: answers[currentQ.id] === opt ? '#e8f0fe' : '#f9fafb',
               border: answers[currentQ.id] === opt ? '2px solid #2a5298' : '1px solid #e5e7eb',
