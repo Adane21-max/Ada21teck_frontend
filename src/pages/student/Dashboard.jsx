@@ -22,13 +22,12 @@ const StudentDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [annRes, subjectsRes, typesRes, attemptsRes, leaderRes] = await Promise.all([
-          api.get('/announcements'),
-          api.get('/subjects'),
-          api.get(`/question-types/visible?grade=${user?.grade}`),
-          api.get('/attempts'),
-          api.get(`/students/leaderboard?grade=${user?.grade}`)
-        ]);
+        const [annRes, subjectsRes, typesRes, attemptsRes] = await Promise.all([
+  api.get('/announcements'),
+  api.get('/subjects'),
+  api.get(`/question-types/visible?grade=${user?.grade}`),
+  api.get('/attempts')   // ✅ this must be present
+]);
         setAnnouncements(annRes.data);
         setSubjects(subjectsRes.data);
         setQuizTypes(typesRes.data);
@@ -304,7 +303,7 @@ const StudentDashboard = () => {
                       ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
                           {subjectQuizzes.map(type => {
-                            const existingAttempt = attempts.find(a => Number(a.type_id) === Number(type.id));
+                            const existingAttempt = attempts.find(a => String(a.type_id) === String(type.id));
                             if (existingAttempt) {
                               return (
                                 <div
