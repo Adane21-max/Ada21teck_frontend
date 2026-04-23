@@ -612,87 +612,43 @@ const StudentDashboard = () => {
             <p style={{ marginBottom: '20px' }}>
               Score: <strong>{reviewAttempt.score} / {reviewAttempt.total_questions}</strong>
             </p>
-            {subjectQuizzes.map(type => {
-  // Find an existing attempt – force numeric comparison
-  const existingAttempt = attempts.find(a => String(a.type_id) === String(type.id));
+            {reviewQuestions.map((q, idx) => {
+  const studentAnswer = q.student_answer;
+  const isCorrect = studentAnswer === q.correct_answer;
+  const isAnswered = studentAnswer !== null && studentAnswer !== undefined;
 
-  // ✅ Already attempted – show review card
-  if (existingAttempt) {
-    return (
-      <div
-        key={type.id}
-        style={{
-          background: 'linear-gradient(145deg, #fff 0%, #f8faff 100%)',
-          border: '1px solid #cbd5e1',
-          borderRadius: '16px',
-          padding: '20px',
-          cursor: 'pointer',
-          transition: 'all 0.2s'
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = '0 12px 20px rgba(42,82,152,0.1)';
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = 'none';
-        }}
-      >
-        <div style={{ fontSize: '32px', marginBottom: '12px' }}>✅</div>
-        <h4 style={{ margin: '0 0 8px', fontSize: '18px', color: '#1e3c72' }}>{type.name}</h4>
-        <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
-          Score: {existingAttempt.score}/{existingAttempt.total_questions} ({Math.round((existingAttempt.score / existingAttempt.total_questions) * 100)}%)
-        </p>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleReview(existingAttempt.id);
-          }}
-          style={{
-            marginTop: '12px',
-            padding: '8px 16px',
-            background: '#e8f0fe',
-            border: 'none',
-            borderRadius: '20px',
-            color: '#2a5298',
-            fontWeight: '500',
-            cursor: 'pointer',
-            width: '100%'
-          }}
-        >
-          📋 Review
-        </button>
-      </div>
-    );
-  }
-
-  // ❌ Not attempted – show take quiz card
   return (
-    <div
-      key={type.id}
-      onClick={() => navigate(`/take-quiz/${type.id}`)}
-      style={{
-        background: 'linear-gradient(145deg, #fff 0%, #f8faff 100%)',
-        border: '1px solid #e0e7ff',
-        borderRadius: '16px',
-        padding: '20px',
-        cursor: 'pointer',
-        transition: 'all 0.2s'
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow = '0 12px 20px rgba(42,82,152,0.1)';
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
-    >
-      <div style={{ fontSize: '32px', marginBottom: '12px' }}>📋</div>
-      <h4 style={{ margin: '0 0 8px', fontSize: '18px', color: '#1e3c72' }}>{type.name}</h4>
-      <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
-        {type.total_time ? `⏱️ ${Math.floor(type.total_time / 60)} min` : '🎯 No time limit'}
-      </p>
+    <div key={q.id} style={{ marginBottom: '20px', padding: '15px', background: '#f9fafb', borderRadius: '12px' }}>
+      <p><strong>Q{idx + 1}: {q.question}</strong></p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '10px 0' }}>
+        {['A', 'B', 'C', 'D'].map(opt => {
+          const isCorrectOption = q.correct_answer === opt;
+          const isStudentChoice = studentAnswer === opt;
+
+          let background = '#f9fafb';
+          if (isStudentChoice && isCorrect) background = '#d1fae5';
+          else if (isStudentChoice && !isCorrect) background = '#fee2e2';
+          else if (isCorrectOption) background = '#d1fae5';
+
+          return (
+            <div
+              key={opt}
+              style={{
+                padding: '8px',
+                background,
+                borderRadius: '6px',
+                border: isStudentChoice ? '2px solid #2a5298' : '1px solid transparent'
+              }}
+            >
+              {opt}: {q[`option${opt}`]}
+              {isCorrectOption && <span style={{ marginLeft: '8px', color: '#059669' }}>✓</span>}
+              {isStudentChoice && !isCorrect && <span style={{ marginLeft: '8px', color: '#dc2626' }}>✗ (Your answer)</span>}
+            </div>
+          );
+        })}
+      </div>
+      {!isAnswered && <p style={{ color: '#6b7280', fontStyle: 'italic' }}>You did not answer this question.</p>}
+      {q.explanation && <p style={{ marginTop: '8px', fontSize: '14px', color: '#4b5563' }}><em>Explanation: {q.explanation}</em></p>}
     </div>
   );
 })}
