@@ -613,22 +613,46 @@ const StudentDashboard = () => {
             <p style={{ marginBottom: '20px' }}>
               Score: <strong>{reviewAttempt.score} / {reviewAttempt.total_questions}</strong>
             </p>
-            {reviewQuestions.map((q, idx) => (
-              <div key={q.id} style={{ marginBottom: '20px', padding: '15px', background: '#f9fafb', borderRadius: '12px' }}>
-                <p><strong>Q{idx + 1}: {q.question}</strong></p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '10px 0' }}>
-                  {['A', 'B', 'C', 'D'].map(opt => {
-                    const isCorrect = q.correct_answer === opt;
-                    return (
-                      <div key={opt} style={{ padding: '8px', background: isCorrect ? '#d1fae5' : 'transparent', borderRadius: '6px' }}>
-                        {opt}: {q[`option${opt}`]} {isCorrect && '✓'}
-                      </div>
-                    );
-                  })}
-                </div>
-                {q.explanation && <p style={{ fontSize: '14px', color: '#4b5563' }}><em>Explanation: {q.explanation}</em></p>}
-              </div>
-            ))}
+            {reviewQuestions.map((q, idx) => {
+  const studentAnswer = q.student_answer;
+  const isCorrect = studentAnswer === q.correct_answer;
+  const isAnswered = studentAnswer !== null && studentAnswer !== undefined;
+
+  return (
+    <div key={q.id} style={{ marginBottom: '20px', padding: '15px', background: '#f9fafb', borderRadius: '12px' }}>
+      <p><strong>Q{idx + 1}: {q.question}</strong></p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '10px 0' }}>
+        {['A', 'B', 'C', 'D'].map(opt => {
+          const isCorrectOption = q.correct_answer === opt;
+          const isStudentChoice = studentAnswer === opt;
+
+          let background = 'transparent';
+          if (isStudentChoice && isCorrect) background = '#d1fae5'; // green – correct
+          else if (isStudentChoice && !isCorrect) background = '#fee2e2'; // red – wrong
+          else if (isCorrectOption) background = '#d1fae5'; // show correct answer
+
+          return (
+            <div
+              key={opt}
+              style={{
+                padding: '8px',
+                background,
+                borderRadius: '6px',
+                border: isStudentChoice ? '2px solid #2a5298' : '1px solid transparent'
+              }}
+            >
+              {opt}: {q[`option${opt}`]}
+              {isCorrectOption && <span style={{ marginLeft: '8px', color: '#059669' }}>✓</span>}
+              {isStudentChoice && !isCorrect && <span style={{ marginLeft: '8px', color: '#dc2626' }}>✗ (Your answer)</span>}
+            </div>
+          );
+        })}
+      </div>
+      {!isAnswered && <p style={{ color: '#6b7280', fontStyle: 'italic' }}>You did not answer this question.</p>}
+      {q.explanation && <p style={{ marginTop: '8px', fontSize: '14px', color: '#4b5563' }}><em>Explanation: {q.explanation}</em></p>}
+    </div>
+  );
+})}
           </div>
         </div>
       )}
