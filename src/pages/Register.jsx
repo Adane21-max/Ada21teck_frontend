@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 const Register = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [grade, setGrade] = useState(9);
+  const [grade, setGrade] = useState('');   // ✅ changed from 9 to empty string
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const { register } = useAuth();
@@ -17,9 +17,13 @@ const Register = () => {
       setError('Password must be at least 4 characters');
       return;
     }
+    if (!grade) {
+      setError('Please select your grade');
+      return;
+    }
     try {
       await register(username, password, grade);
-      setSuccess('Registration successful! Redirecting to login...');
+      setSuccess('Registration successful! Please wait for admin approval.');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
@@ -45,7 +49,7 @@ const Register = () => {
         maxWidth: '420px',
         textAlign: 'center',
       }}>
-        <h2 style={{ fontSize: '32px', color: '#1e3c72', marginBottom: '8px' }}>Join SMART Exam Center</h2>
+        <h2 style={{ fontSize: '32px', color: '#1e3c72', marginBottom: '8px' }}>Join Ada21Tech</h2>
         <p style={{ color: '#666', marginBottom: '30px' }}>Start your learning journey today</p>
         
         {error && (
@@ -151,15 +155,15 @@ const Register = () => {
                 border: '1px solid #d1d5db',
                 borderRadius: '12px',
                 fontSize: '16px',
-                backgroundColor: '#fff',
+                backgroundColor: grade === '' ? '#f9fafb' : '#fff',
+                color: grade === '' ? '#6b7280' : '#000',
                 outline: 'none',
-                cursor: 'pointer',
                 boxSizing: 'border-box',
+                cursor: 'pointer'
               }}
             >
-              {[6,7,8,9,10,11,12].map(g => (
-                <option key={g} value={g}>Grade {g}</option>
-              ))}
+              <option value="" disabled>Select your grade</option>
+              {[6,7,8,9,10,11,12].map(g => <option key={g} value={g}>Grade {g}</option>)}
             </select>
           </div>
 
