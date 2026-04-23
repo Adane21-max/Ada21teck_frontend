@@ -49,7 +49,7 @@ const Register = () => {
         maxWidth: '420px',
         textAlign: 'center',
       }}>
-        <h2 style={{ fontSize: '32px', color: '#1e3c72', marginBottom: '8px' }}>Join Ada21Tech</h2>
+        <h2 style={{ fontSize: '32px', color: '#1e3c72', marginBottom: '8px' }}>Join SMART Exam Center</h2>
         <p style={{ color: '#666', marginBottom: '30px' }}>Start your learning journey today</p>
         
         {error && (
