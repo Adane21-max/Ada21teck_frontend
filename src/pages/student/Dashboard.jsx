@@ -18,19 +18,19 @@ const StudentDashboard = () => {
   const [reviewAttempt, setReviewAttempt] = useState(null);
   const [reviewQuestions, setReviewQuestions] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
-  const [myLevels, setMyLevels] = useState({});           // { subject_id: level }
-  const [pendingUpgrades, setPendingUpgrades] = useState([]); // array of subject_ids
+  const [globalLevel, setGlobalLevel] = useState(1);               // student's current global level
+  const [hasGlobalPending, setHasGlobalPending] = useState(false); // whether a global upgrade request is pending
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [annRes, subjectsRes, typesRes, attemptsRes, leaderRes, levelsRes, pendingRes] = await Promise.all([
+              const [annRes, subjectsRes, typesRes, attemptsRes, leaderRes, levelRes, pendingRes] = await Promise.all([
           api.get('/announcements'),
           api.get('/subjects'),
           api.get(`/question-types/visible?grade=${user?.grade}`),
           api.get('/attempts'),
           api.get(`/students/leaderboard?grade=${user?.grade}`),
-          api.get('/students/my-levels'),
+          api.get('/students/current-level'),
           api.get('/upgrades/pending')
         ]);
         setAnnouncements(annRes.data);
@@ -38,8 +38,8 @@ const StudentDashboard = () => {
         setQuizTypes(typesRes.data);
         setAttempts(attemptsRes.data);
         setLeaderboard(leaderRes.data);
-        setMyLevels(levelsRes.data);
-        setPendingUpgrades(pendingRes.data);
+        setGlobalLevel(levelRes.data.level);
+        setHasGlobalPending(pendingRes.data.pending);
         console.log('Attempts received:', attemptsRes.data);
       } catch (err) {
         console.error('Failed to fetch dashboard data', err);
@@ -274,7 +274,87 @@ const StudentDashboard = () => {
               📝 Take Quizzes
             </button>
           </div>
+                     {/* Global Upgrade Box */}
+          {user?.status === 'approved' && (() => {
+            const levelQuizzes = quizTypes.filter(q => q.level === globalLevel);
+            if (levelQuizzes.length === 0) return null;
 
+            const attemptMap = {};
+            attempts.forEach(a => { attemptMap[a.type_id] = a; });
+
+            const allAttempted = levelQuizzes.every(q => attemptMap[q.id]);
+            const totalAttempted = levelQuizzes.filter(q => attemptMap[q.id]).length;
+            const remaining = levelQuizzes.length - totalAttempted;
+
+            let overallAvg = 0;
+            if (allAttempted) {
+              let totalPercent = 0;
+              levelQuizzes.forEach(q => {
+                const att = attemptMap[q.id];
+                totalPercent += (att.score / att.total_questions) * 100;
+              });
+              overallAvg = totalPercent / levelQuizzes.length;
+            }
+
+            // Eligible and no pending request
+            if (allAttempted && overallAvg >= 70 && !hasGlobalPending) {
+              return (
+                <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '16px', padding: '20px', marginBottom: '24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '16px', fontWeight: '600', color: '#1e3c72' }}>
+                    🎉 You've completed all Level {globalLevel} quizzes with an average of {overallAvg.toFixed(1)}%!
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await api.post('/upgrades/request', {});
+                        alert(res.data.message);
+                        const refreshed = await api.get('/upgrades/pending');
+                        setHasGlobalPending(refreshed.data.pending);
+                      } catch (err) {
+                        alert(err.response?.data?.message || 'Failed to request upgrade');
+                      }
+                    }}
+                    style={{ padding: '10px 24px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '30px', fontWeight: '600', cursor: 'pointer', fontSize: '15px' }}
+                  >
+                    🚀 Request Level {globalLevel + 1} Upgrade
+                  </button>
+                </div>
+              );
+            }
+
+            // Pending request
+            if (hasGlobalPending) {
+              return (
+                <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '16px', padding: '20px', marginBottom: '24px', textAlign: 'center' }}>
+                  <p>⏳ Upgrade request pending for Level {globalLevel + 1}</p>
+                </div>
+              );
+            }
+
+            // All attempted but below threshold
+            if (allAttempted && overallAvg < 70) {
+              return (
+                <div style={{ background: '#fee2e2', border: '1px solid #dc2626', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
+                  <p style={{ fontWeight: '600', color: '#1e3c72' }}>
+                    Your overall average is {overallAvg.toFixed(1)}%. You need 70% to unlock Level {globalLevel + 1}.
+                  </p>
+                  <p style={{ color: '#4b5563' }}>
+                    Retake option coming soon.
+                  </p>
+                </div>
+              );
+            }
+
+            // Not all quizzes completed
+            return (
+              <div style={{ background: '#e8f0fe', border: '1px solid #2a5298', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
+                <p>
+                  📚 Complete all Level {globalLevel} quizzes to unlock Level {globalLevel + 1}. ({totalAttempted}/{levelQuizzes.length} completed)
+                </p>
+                {remaining > 0 && <p style={{ fontSize: '14px', color: '#4b5563' }}>{remaining} quiz{remaining > 1 ? 'zes' : ''} remaining.</p>}
+              </div>
+            );
+          })()}
           {/* Subjects and Quizzes */}
           {user?.status === 'approved' && (
             <div id="quizzes-section" style={{
@@ -306,18 +386,6 @@ const StudentDashboard = () => {
                         paddingBottom: '8px'
                       }}>
                         {subject.name}
-                        {/* Current Level Badge */}
-                        <span style={{
-                          marginLeft: '10px',
-                          fontSize: '13px',
-                          background: '#e8f0fe',
-                          color: '#2a5298',
-                          padding: '2px 10px',
-                          borderRadius: '20px',
-                          fontWeight: '500'
-                        }}>
-                          Level {myLevels[subject.id] || 1}
-                        </span>
                       </h3>
 
                       {/* Upgrade request logic */}
