@@ -10,39 +10,45 @@ const StudentDashboard = () => {
   const [quizTypes, setQuizTypes] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [showPayment, setShowPayment] = useState(false);
-  const [payerName, setPayerName] = useState('');               // ✅ changed
-  const [transactionRef, setTransactionRef] = useState('');     // ✅ new
+  const [payerName, setPayerName] = useState('');
+  const [transactionRef, setTransactionRef] = useState('');
   const [uploadMsg, setUploadMsg] = useState('');
   const [loading, setLoading] = useState(true);
   const [attempts, setAttempts] = useState([]);
   const [reviewAttempt, setReviewAttempt] = useState(null);
   const [reviewQuestions, setReviewQuestions] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [myLevels, setMyLevels] = useState({});           // { subject_id: level }
+  const [pendingUpgrades, setPendingUpgrades] = useState([]); // array of subject_ids
 
   useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const [annRes, subjectsRes, typesRes, attemptsRes, leaderRes] = await Promise.all([
-        api.get('/announcements'),
-        api.get('/subjects'),
-        api.get(`/question-types/visible?grade=${user?.grade}`),
-        api.get('/attempts'),
-        api.get(`/students/leaderboard?grade=${user?.grade}`)   // ✅ NEW
-      ]);
-      setAnnouncements(annRes.data);
-      setSubjects(subjectsRes.data);
-      setQuizTypes(typesRes.data);
-      setAttempts(attemptsRes.data);
-      setLeaderboard(leaderRes.data);                           // ✅ SET IT
-      console.log('Attempts received:', attemptsRes.data);
-    } catch (err) {
-      console.error('Failed to fetch dashboard data', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  if (user?.grade) fetchData();
-}, [user, refreshKey]);
+    const fetchData = async () => {
+      try {
+        const [annRes, subjectsRes, typesRes, attemptsRes, leaderRes, levelsRes, pendingRes] = await Promise.all([
+          api.get('/announcements'),
+          api.get('/subjects'),
+          api.get(`/question-types/visible?grade=${user?.grade}`),
+          api.get('/attempts'),
+          api.get(`/students/leaderboard?grade=${user?.grade}`),
+          api.get('/students/my-levels'),
+          api.get('/upgrades/pending')
+        ]);
+        setAnnouncements(annRes.data);
+        setSubjects(subjectsRes.data);
+        setQuizTypes(typesRes.data);
+        setAttempts(attemptsRes.data);
+        setLeaderboard(leaderRes.data);
+        setMyLevels(levelsRes.data);
+        setPendingUpgrades(pendingRes.data);
+        console.log('Attempts received:', attemptsRes.data);
+      } catch (err) {
+        console.error('Failed to fetch dashboard data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user?.grade) fetchData();
+  }, [user, refreshKey]);
 
   const handleTakeQuizClick = () => {
     if (user?.status !== 'approved') {
@@ -52,7 +58,6 @@ const StudentDashboard = () => {
     }
   };
 
-  // ✅ NEW payment submit handler
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     if (!payerName.trim() || !transactionRef.trim()) {
@@ -299,7 +304,80 @@ const StudentDashboard = () => {
                         color: '#2a5298',
                         borderBottom: '1px solid #e5e7eb',
                         paddingBottom: '8px'
-                      }}>{subject.name}</h3>
+                      }}>
+                        {subject.name}
+                        {/* Current Level Badge */}
+                        <span style={{
+                          marginLeft: '10px',
+                          fontSize: '13px',
+                          background: '#e8f0fe',
+                          color: '#2a5298',
+                          padding: '2px 10px',
+                          borderRadius: '20px',
+                          fontWeight: '500'
+                        }}>
+                          Level {myLevels[subject.id] || 1}
+                        </span>
+                      </h3>
+
+                      {/* Upgrade request logic */}
+                      {(() => {
+                        const currentLevel = myLevels[subject.id] || 1;
+                        const currentLevelQuizzes = subjectQuizzes.filter(q => q.level === currentLevel);
+                        if (currentLevelQuizzes.length === 0) return null;
+
+                        const attemptMap = {};
+                        attempts.forEach(a => { attemptMap[a.type_id] = a; });
+
+                        const allAttempted = currentLevelQuizzes.every(q => attemptMap[q.id]);
+                        if (!allAttempted) return null;
+
+                        let totalPercent = 0;
+                        currentLevelQuizzes.forEach(q => {
+                          const att = attemptMap[q.id];
+                          totalPercent += (att.score / att.total_questions) * 100;
+                        });
+                        const avg = totalPercent / currentLevelQuizzes.length;
+                        if (avg < 70) return null;
+
+                        if (pendingUpgrades.includes(subject.id)) {
+                          return (
+                            <p style={{ fontSize: '12px', color: '#f59e0b', marginTop: '4px' }}>
+                              ⏳ Upgrade request pending
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <button
+                            onClick={async () => {
+                              try {
+                                const res = await api.post('/upgrades/request', { subject_id: subject.id });
+                                alert(res.data.message);
+                                const refreshed = await api.get('/upgrades/pending');
+                                setPendingUpgrades(refreshed.data);
+                              } catch (err) {
+                                alert(err.response?.data?.message || 'Failed to request upgrade');
+                              }
+                            }}
+                            style={{
+                              marginTop: '8px',
+                              marginBottom: '12px',
+                              padding: '6px 14px',
+                              background: '#f59e0b',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '20px',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            🚀 Request Level Upgrade
+                          </button>
+                        );
+                      })()}
+
                       {subjectQuizzes.length === 0 ? (
                         <p style={{ color: '#6b7280', fontStyle: 'italic', padding: '8px 0' }}>No quizzes yet for this subject.</p>
                       ) : (
@@ -615,45 +693,45 @@ const StudentDashboard = () => {
               Score: <strong>{reviewAttempt.score} / {reviewAttempt.total_questions}</strong>
             </p>
             {reviewQuestions.map((q, idx) => {
-  const studentAnswer = q.student_answer;
-  const isCorrect = studentAnswer === q.correct_answer;
-  const isAnswered = studentAnswer !== null && studentAnswer !== undefined;
+              const studentAnswer = q.student_answer;
+              const isCorrect = studentAnswer === q.correct_answer;
+              const isAnswered = studentAnswer !== null && studentAnswer !== undefined;
 
-  return (
-    <div key={q.id} style={{ marginBottom: '20px', padding: '15px', background: '#f9fafb', borderRadius: '12px' }}>
-      <p><strong>Q{idx + 1}: {q.question}</strong></p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '10px 0' }}>
-        {['A', 'B', 'C', 'D'].map(opt => {
-          const isCorrectOption = q.correct_answer === opt;
-          const isStudentChoice = studentAnswer === opt;
+              return (
+                <div key={q.id} style={{ marginBottom: '20px', padding: '15px', background: '#f9fafb', borderRadius: '12px' }}>
+                  <p><strong>Q{idx + 1}: {q.question}</strong></p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', margin: '10px 0' }}>
+                    {['A', 'B', 'C', 'D'].map(opt => {
+                      const isCorrectOption = q.correct_answer === opt;
+                      const isStudentChoice = studentAnswer === opt;
 
-          let background = '#f9fafb';
-          if (isStudentChoice && isCorrect) background = '#d1fae5';
-          else if (isStudentChoice && !isCorrect) background = '#fee2e2';
-          else if (isCorrectOption) background = '#d1fae5';
+                      let background = '#f9fafb';
+                      if (isStudentChoice && isCorrect) background = '#d1fae5';
+                      else if (isStudentChoice && !isCorrect) background = '#fee2e2';
+                      else if (isCorrectOption) background = '#d1fae5';
 
-          return (
-            <div
-              key={opt}
-              style={{
-                padding: '8px',
-                background,
-                borderRadius: '6px',
-                border: isStudentChoice ? '2px solid #2a5298' : '1px solid transparent'
-              }}
-            >
-              {opt}: {q[`option${opt}`]}
-              {isCorrectOption && <span style={{ marginLeft: '8px', color: '#059669' }}>✓</span>}
-              {isStudentChoice && !isCorrect && <span style={{ marginLeft: '8px', color: '#dc2626' }}>✗ (Your answer)</span>}
-            </div>
-          );
-        })}
-      </div>
-      {!isAnswered && <p style={{ color: '#6b7280', fontStyle: 'italic' }}>You did not answer this question.</p>}
-      {q.explanation && <p style={{ marginTop: '8px', fontSize: '14px', color: '#4b5563' }}><em>Explanation: {q.explanation}</em></p>}
-    </div>
-  );
-})}
+                      return (
+                        <div
+                          key={opt}
+                          style={{
+                            padding: '8px',
+                            background,
+                            borderRadius: '6px',
+                            border: isStudentChoice ? '2px solid #2a5298' : '1px solid transparent'
+                          }}
+                        >
+                          {opt}: {q[`option${opt}`]}
+                          {isCorrectOption && <span style={{ marginLeft: '8px', color: '#059669' }}>✓</span>}
+                          {isStudentChoice && !isCorrect && <span style={{ marginLeft: '8px', color: '#dc2626' }}>✗ (Your answer)</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {!isAnswered && <p style={{ color: '#6b7280', fontStyle: 'italic' }}>You did not answer this question.</p>}
+                  {q.explanation && <p style={{ marginTop: '8px', fontSize: '14px', color: '#4b5563' }}><em>Explanation: {q.explanation}</em></p>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
