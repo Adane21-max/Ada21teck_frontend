@@ -24,7 +24,7 @@ const UpgradeRequests = () => {
     if (!window.confirm('Approve this upgrade?')) return;
     try {
       await api.put(`/upgrades/${id}/approve`);
-      fetchRequests(); // refresh the list
+      fetchRequests();
     } catch (err) {
       alert('Failed to approve');
     }
