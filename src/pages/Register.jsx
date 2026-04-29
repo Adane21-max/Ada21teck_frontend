@@ -5,14 +5,19 @@ import { useAuth } from '../context/AuthContext';
 const Register = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [grade, setGrade] = useState('');   // ✅ changed from 9 to empty string
+  const [grade, setGrade] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [usernameError, setUsernameError] = useState('');   // 👈 new state for inline username error
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    setUsernameError('');
+
     if (password.length < 4) {
       setError('Password must be at least 4 characters');
       return;
@@ -21,12 +26,20 @@ const Register = () => {
       setError('Please select your grade');
       return;
     }
+
     try {
       await register(username, password, grade);
       setSuccess('Registration successful! Please wait for admin approval.');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      const msg = err.response?.data?.message || 'Registration failed';
+
+      // If the error is about duplicate username, show it inline
+      if (msg.toLowerCase().includes('username')) {
+        setUsernameError(msg);
+      } else {
+        setError(msg);
+      }
     }
   };
 
@@ -87,28 +100,39 @@ const Register = () => {
               type="text"
               placeholder="Choose a username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (usernameError) setUsernameError('');   // clear inline error when user types
+              }}
               required
               style={{
                 width: '100%',
                 padding: '14px 16px',
-                border: '1px solid #d1d5db',
+                border: `1px solid ${usernameError ? '#dc2626' : '#d1d5db'}`,
                 borderRadius: '12px',
                 fontSize: '16px',
-                transition: 'border 0.2s, box-shadow 0.2s',
                 outline: 'none',
                 boxSizing: 'border-box',
+                transition: 'border 0.2s, box-shadow 0.2s',
               }}
               onFocus={(e) => {
-                e.target.style.border = '1px solid #2a5298';
-                e.target.style.boxShadow = '0 0 0 3px rgba(42,82,152,0.1)';
+                e.target.style.border = `1px solid ${usernameError ? '#dc2626' : '#2a5298'}`;
+                e.target.style.boxShadow = usernameError ? '0 0 0 3px rgba(220,38,38,0.1)' : '0 0 0 3px rgba(42,82,152,0.1)';
               }}
               onBlur={(e) => {
-                e.target.style.border = '1px solid #d1d5db';
+                e.target.style.border = `1px solid ${usernameError ? '#dc2626' : '#d1d5db'}`;
                 e.target.style.boxShadow = 'none';
               }}
             />
+            {usernameError && (
+              <p style={{ color: '#dc2626', fontSize: '13px', marginTop: '6px', marginBottom: 0 }}>
+                {usernameError}
+              </p>
+            )}
           </div>
+
+          {/* … rest of the form (Password, Grade, Submit) remains unchanged … */}
+          {/* I'm keeping the rest for completeness, but only the password/grade parts are identical */}
 
           <div style={{ marginBottom: '20px', textAlign: 'left' }}>
             <label style={{ display: 'block', marginBottom: '6px', color: '#374151', fontWeight: '500' }}>
